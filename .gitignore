@@ -18,13 +18,14 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
-# Node/NPM (if using build tools)
+# Node/NPM/Bun
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
 yarn.lock
+bun.lockb
 
 # Build and Distribution
 dist/
@@ -33,6 +34,7 @@ build/
 *.crx
 *.xpi
 web-ext-artifacts/
+smart-tab-grouper.zip
 
 # Environment and Secrets
 .env
