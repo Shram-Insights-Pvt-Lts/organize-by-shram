@@ -9,7 +9,11 @@ const GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple'
 const STOP_WORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
   'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'been', 'be',
-  'www', 'com', 'net', 'org', 'http', 'https', 'html', 'htm'
+  'www', 'com', 'net', 'org', 'http', 'https', 'html', 'htm',
+  // Common browser/search terms that aren't meaningful for grouping
+  'google', 'search', 'chrome', 'browser', 'tab', 'new', 'page', 'home',
+  'web', 'site', 'online', 'free', 'best', 'top', 'how', 'what', 'why',
+  'brave', 'firefox', 'safari', 'edge', 'extensions'
 ]);
 
 /**
@@ -37,7 +41,7 @@ async function setupOffscreenDocument() {
     await chrome.offscreen.createDocument({
       url: OFFSCREEN_DOCUMENT_PATH,
       reasons: ['DOM_SCRAPING'], // Use DOM_SCRAPING as the reason for WASM processing
-      justification: 'Run MediaPipe WASM model for local AI tab embeddings'
+      justification: 'Run WebLLM model for local AI tab embeddings'
     });
     console.log('[Background] Offscreen document created');
 
@@ -111,13 +115,42 @@ async function getEmbeddings(tabs) {
  * Extract keywords from tab titles and generate a group name
  */
 function generateGroupTitle(tabs) {
-  // Collect all words from titles
+  // First, try to find a common domain
+  const domainCounts = new Map();
+  
+  for (const tab of tabs) {
+    try {
+      const url = new URL(tab.url);
+      let domain = url.hostname.replace('www.', '');
+      // Get the main domain name (e.g., 'github' from 'github.com')
+      const parts = domain.split('.');
+      if (parts.length >= 2) {
+        domain = parts[parts.length - 2]; // Get second-to-last part
+      }
+      if (domain.length >= 3 && !STOP_WORDS.has(domain.toLowerCase())) {
+        domainCounts.set(domain, (domainCounts.get(domain) || 0) + 1);
+      }
+    } catch (e) {
+      // Ignore invalid URLs
+    }
+  }
+  
+  // If majority share a domain, use it as the group name
+  for (const [domain, count] of domainCounts.entries()) {
+    if (count >= Math.ceil(tabs.length * 0.5)) {
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    }
+  }
+
+  // Fall back to analyzing titles
   const wordCounts = new Map();
+  const wordTabs = new Map(); // Track which tabs contain each word for diversity scoring
 
   for (const tab of tabs) {
     const title = tab.title || '';
     // Extract words (alphanumeric sequences)
     const words = title.toLowerCase().match(/\b[a-z0-9]+\b/g) || [];
+    const seenWords = new Set();
 
     for (const word of words) {
       // Skip stop words and very short words
@@ -126,16 +159,30 @@ function generateGroupTitle(tabs) {
       }
 
       wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+      
+      // Track unique tabs containing this word
+      if (!seenWords.has(word)) {
+        seenWords.add(word);
+        if (!wordTabs.has(word)) {
+          wordTabs.set(word, new Set());
+        }
+        wordTabs.get(word).add(tab.id);
+      }
     }
   }
 
-  // Find the most common word
-  let maxCount = 0;
+  // Score words: prefer words that appear in multiple tabs but aren't too generic
+  let bestScore = 0;
   let bestWord = null;
 
   for (const [word, count] of wordCounts.entries()) {
-    if (count > maxCount) {
-      maxCount = count;
+    const tabSpread = wordTabs.get(word)?.size || 0;
+    // Score = number of tabs containing the word * sqrt(word length)
+    // This balances spread across tabs with word specificity
+    const score = tabSpread * Math.sqrt(word.length);
+    
+    if (score > bestScore) {
+      bestScore = score;
       bestWord = word;
     }
   }
@@ -147,6 +194,7 @@ function generateGroupTitle(tabs) {
 
   return `Group ${Date.now() % 1000}`;
 }
+
 
 /**
  * Get a random color that hasn't been used recently
@@ -197,9 +245,15 @@ async function organizeTabs(sendStatus = null) {
     // Step 4: Run DBSCAN clustering
     if (sendStatus) sendStatus({ status: 'clustering', message: 'Finding patterns...' });
 
-    // Auto-suggest epsilon or use default
-    const epsilon = embeddingCount > 10 ? suggestEpsilon(embeddings) : 0.4;
+    // Use tighter epsilon for better separation
+    // Lower epsilon = stricter clustering = more distinct groups
+    // 0.25 works well for the Snowflake Arctic embedding model
+    const suggestedEps = embeddingCount > 10 ? suggestEpsilon(embeddings) : 0.25;
+    // Cap epsilon to prevent over-clustering
+    const epsilon = Math.min(suggestedEps, 0.9);
     const minPoints = 2;
+    
+    console.log(`[Background] Using epsilon: ${epsilon}`);
 
     const { clusters, noise } = dbscan(embeddings, epsilon, minPoints);
 
@@ -290,6 +344,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => {
         sendResponse({ success: false, error: error.message });
       });
+
+    // Return true to indicate async response
+    return true;
+  }
+
+  if (message.type === 'CLEAR_ALL_GROUPS') {
+    (async () => {
+      try {
+        // Get all tabs in current window
+        const tabs = await chrome.tabs.query({ currentWindow: true });
+        
+        // Get all grouped tab IDs
+        const groupedTabIds = tabs
+          .filter(tab => tab.groupId !== -1)
+          .map(tab => tab.id);
+        
+        if (groupedTabIds.length === 0) {
+          sendResponse({ success: true, groupsCleared: 0 });
+          return;
+        }
+
+        // Get unique group IDs for counting
+        const groupIds = new Set(tabs.filter(tab => tab.groupId !== -1).map(tab => tab.groupId));
+        
+        // Ungroup all tabs
+        await chrome.tabs.ungroup(groupedTabIds);
+        
+        console.log(`[Background] Cleared ${groupIds.size} groups, ungrouped ${groupedTabIds.length} tabs`);
+        sendResponse({ success: true, groupsCleared: groupIds.size });
+      } catch (error) {
+        console.error('[Background] Error clearing groups:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
 
     // Return true to indicate async response
     return true;

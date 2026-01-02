@@ -1,4 +1,5 @@
 const organizeBtn = document.getElementById('organizeBtn');
+const clearGroupsBtn = document.getElementById('clearGroupsBtn');
 const statusArea = document.getElementById('statusArea');
 
 // Status message templates
@@ -8,6 +9,7 @@ const statusMessages = {
   processing: 'Analyzing tabs...',
   clustering: 'Finding patterns...',
   grouping: 'Creating groups...',
+  clearing: 'Clearing groups...',
   complete: 'Done!',
   error: 'Oops! Something went wrong.'
 };
@@ -93,8 +95,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Set up event listener
+/**
+ * Handle clear groups button click
+ */
+async function handleClearGroups() {
+  try {
+    // Disable button
+    clearGroupsBtn.disabled = true;
+    clearGroupsBtn.textContent = 'Clearing...';
+
+    // Show status
+    updateStatus('clearing', 'Removing all tab groups...', true);
+
+    // Send message to background script
+    const response = await chrome.runtime.sendMessage({
+      type: 'CLEAR_ALL_GROUPS'
+    });
+
+    if (response && response.success) {
+      updateStatus('complete', `Cleared ${response.groupsCleared} group(s)!`, false);
+    } else {
+      updateStatus('error', response?.error || 'Failed to clear groups');
+    }
+
+  } catch (error) {
+    console.error('Error clearing groups:', error);
+    updateStatus('error', error.message || 'An unexpected error occurred');
+  } finally {
+    // Re-enable button after a delay
+    setTimeout(() => {
+      clearGroupsBtn.disabled = false;
+      clearGroupsBtn.textContent = 'Clear All Groups';
+    }, 1000);
+  }
+}
+
+// Set up event listeners
 organizeBtn.addEventListener('click', handleOrganize);
+clearGroupsBtn.addEventListener('click', handleClearGroups);
 
 // Initialize
 console.log('[Popup] TabSmart popup loaded');

@@ -27,19 +27,8 @@ if (existsSync("src/icons")) {
   console.log("⚠️  Icons directory not found, skipping...");
 }
 
-// Copy MediaPipe WASM files
-console.log("🧠 Copying MediaPipe WASM files...");
-const mediapipeWasmPath = "node_modules/@mediapipe/tasks-text/wasm";
-if (existsSync(mediapipeWasmPath)) {
-  mkdirSync(join(DIST_DIR, "wasm"), { recursive: true });
-  cpSync(mediapipeWasmPath, join(DIST_DIR, "wasm"), { recursive: true });
-  console.log("✅ MediaPipe WASM files copied");
-} else {
-  console.log("⚠️  MediaPipe WASM files not found in node_modules, skipping...");
-}
-
-// Download and copy the model file
-console.log("📥 Checking model file...");
+// Create models directory (WebLLM handles model downloading automatically)
+console.log("📥 Setting up models directory...");
 const modelDir = join(DIST_DIR, "models");
 mkdirSync(modelDir, { recursive: true });
 

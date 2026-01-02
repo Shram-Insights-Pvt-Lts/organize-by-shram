@@ -1,13 +1,16 @@
-import { FilesetResolver, TextEmbedder } from '@mediapipe/tasks-text';
+import * as webllm from '@mlc-ai/web-llm';
 
-let textEmbedder = null;
+let engine = null;
 let isInitializing = false;
 let initializationPromise = null;
 
-// Initialize the MediaPipe Text Embedder
+// Embedding model - supports batch processing for efficiency
+const EMBEDDING_MODEL = 'snowflake-arctic-embed-m-q0f32-MLC-b4';
+
+// Initialize the WebLLM Engine for embeddings
 async function initializeEmbedder() {
-  if (textEmbedder) {
-    return textEmbedder;
+  if (engine) {
+    return engine;
   }
 
   if (isInitializing) {
@@ -17,28 +20,19 @@ async function initializeEmbedder() {
   isInitializing = true;
   initializationPromise = (async () => {
     try {
-      console.log('[Offscreen] Initializing MediaPipe Text Embedder...');
+      console.log('[Offscreen] Initializing WebLLM Engine...');
 
-      // Use local WASM files bundled with the extension
-      const wasmPath = chrome.runtime.getURL('wasm');
-      console.log('[Offscreen] WASM path:', wasmPath);
-
-      // Create the FilesetResolver with local WASM files
-      const textFiles = await FilesetResolver.forTextTasks(wasmPath);
-
-      // Create the TextEmbedder with Universal Sentence Encoder model from Google Storage
-      // Note: The model is loaded from Google's storage as it's too large to bundle
-      textEmbedder = await TextEmbedder.createFromOptions(textFiles, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/text_embedder/universal_sentence_encoder/float32/1/universal_sentence_encoder.tflite'
+      engine = await webllm.CreateMLCEngine(EMBEDDING_MODEL, {
+        initProgressCallback: (progress) => {
+          console.log('[Offscreen] Model loading:', progress.text);
         },
-        quantize: false
+        logLevel: 'INFO'
       });
 
-      console.log('[Offscreen] Text Embedder initialized successfully');
-      return textEmbedder;
+      console.log('[Offscreen] WebLLM Engine initialized successfully');
+      return engine;
     } catch (error) {
-      console.error('[Offscreen] Failed to initialize Text Embedder:', error);
+      console.error('[Offscreen] Failed to initialize WebLLM Engine:', error);
       isInitializing = false;
       initializationPromise = null;
       throw error;
@@ -56,36 +50,45 @@ async function generateEmbeddings(tabs) {
 
     console.log(`[Offscreen] Generating embeddings for ${tabs.length} tabs`);
 
+    // Prepare all texts for batch processing
+    const tabTexts = [];
+    const validTabs = [];
+
     for (const tab of tabs) {
+      const text = `${tab.title || ''} ${tab.url || ''}`.trim();
+      if (text) {
+        tabTexts.push(text);
+        validTabs.push(tab);
+      } else {
+        console.warn(`[Offscreen] Skipping tab ${tab.id} - no title or URL`);
+      }
+    }
+
+    if (tabTexts.length === 0) {
+      return embeddings;
+    }
+
+    // Generate embeddings in batch (model supports up to batch size 4)
+    const batchSize = 4;
+    for (let i = 0; i < tabTexts.length; i += batchSize) {
+      const batchTexts = tabTexts.slice(i, i + batchSize);
+      const batchTabs = validTabs.slice(i, i + batchSize);
+
       try {
-        // Create a meaningful text representation combining title and URL
-        const text = `${tab.title || ''} ${tab.url || ''}`.trim();
+        const result = await embedder.embeddings.create({
+          input: batchTexts
+        });
 
-        if (!text) {
-          console.warn(`[Offscreen] Skipping tab ${tab.id} - no title or URL`);
-          continue;
-        }
-
-        // Generate embedding
-        const result = embedder.embed(text);
-
-        if (result && result.embeddings && result.embeddings.length > 0) {
-          // Extract the floating-point vector
-          const embedding = result.embeddings[0];
-          const vector = embedding.floatEmbedding || embedding.quantizedEmbedding;
-
-          if (vector) {
-            embeddings[tab.id] = Array.from(vector);
-            console.log(`[Offscreen] Generated embedding for tab ${tab.id}: ${text.substring(0, 50)}...`);
-          } else {
-            console.warn(`[Offscreen] No vector in embedding result for tab ${tab.id}`);
-          }
-        } else {
-          console.warn(`[Offscreen] Invalid embedding result for tab ${tab.id}`);
+        // Map results back to tab IDs
+        for (let j = 0; j < result.data.length; j++) {
+          const tab = batchTabs[j];
+          const embedding = result.data[j].embedding;
+          embeddings[tab.id] = embedding;
+          console.log(`[Offscreen] Generated embedding for tab ${tab.id}: ${batchTexts[j].substring(0, 50)}...`);
         }
       } catch (error) {
-        console.error(`[Offscreen] Error generating embedding for tab ${tab.id}:`, error);
-        // Continue with other tabs even if one fails
+        console.error(`[Offscreen] Error generating embeddings for batch starting at ${i}:`, error);
+        // Continue with other batches even if one fails
       }
     }
 

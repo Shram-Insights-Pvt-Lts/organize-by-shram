@@ -6,7 +6,7 @@
     "chrome-extension",
     "tab-management",
     "ai",
-    "mediapipe",
+    "webllm",
     "clustering",
     "privacy",
     "productivity",
@@ -23,7 +23,7 @@
     "dev:chrome": "bun run build && open -a 'Google Chrome' --args --load-extension=$(pwd)/dist"
   },
   "dependencies": {
-    "@mediapipe/tasks-text": "^0.10.22-rc.20250304"
+    "@mlc-ai/web-llm": "^0.2.78"
   },
   "devDependencies": {
     "@types/bun": "latest",
