@@ -3,7 +3,6 @@
 import { existsSync, rmSync, mkdirSync, cpSync } from "fs";
 import { join } from "path";
 
-const SRC_DIR = "src";
 const DIST_DIR = "dist";
 
 // Clean dist directory
@@ -18,49 +17,84 @@ console.log("📁 Created dist directory");
 
 // Copy manifest.json
 console.log("📋 Copying manifest.json...");
-cpSync(join(SRC_DIR, "manifest.json"), join(DIST_DIR, "manifest.json"));
+cpSync("manifest.json", join(DIST_DIR, "manifest.json"));
 
-// Copy icons
+// Copy icons from src/icons
 console.log("🎨 Copying icons...");
-cpSync(join(SRC_DIR, "icons"), join(DIST_DIR, "icons"), { recursive: true });
+if (existsSync("src/icons")) {
+  cpSync("src/icons", join(DIST_DIR, "icons"), { recursive: true });
+} else {
+  console.log("⚠️  Icons directory not found, skipping...");
+}
 
-// Bundle popup.js with dependencies
-console.log("📦 Bundling popup.js...");
+// Copy MediaPipe WASM files
+console.log("🧠 Copying MediaPipe WASM files...");
+const mediapipeWasmPath = "node_modules/@mediapipe/tasks-text/wasm";
+if (existsSync(mediapipeWasmPath)) {
+  mkdirSync(join(DIST_DIR, "wasm"), { recursive: true });
+  cpSync(mediapipeWasmPath, join(DIST_DIR, "wasm"), { recursive: true });
+  console.log("✅ MediaPipe WASM files copied");
+} else {
+  console.log("⚠️  MediaPipe WASM files not found in node_modules, skipping...");
+}
 
-// Use simple test file for debugging
-const entrypoint = process.env.DEBUG
-  ? join(SRC_DIR, "popup", "popup-simple.js")
-  : join(SRC_DIR, "popup", "popup.js");
+// Download and copy the model file
+console.log("📥 Checking model file...");
+const modelDir = join(DIST_DIR, "models");
+mkdirSync(modelDir, { recursive: true });
 
-console.log("Using entrypoint:", entrypoint);
 
-const result = await Bun.build({
-  entrypoints: [entrypoint],
+// Bundle background.js with lib/dbscan.js
+console.log("📦 Bundling background.js...");
+const backgroundResult = await Bun.build({
+  entrypoints: ["background.js"],
   outdir: DIST_DIR,
   target: "browser",
-  format: "iife",
+  format: "esm",
   minify: false,
   splitting: false,
-  naming: "popup.js",
+  naming: "background.js",
   external: [],
 });
 
-if (!result.success) {
-  console.error("Build failed:", result.logs);
+if (!backgroundResult.success) {
+  console.error("Background build failed:", backgroundResult.logs);
   process.exit(1);
 }
 
-// Copy popup HTML and CSS
-console.log("🎭 Copying popup HTML and CSS...");
-cpSync(join(SRC_DIR, "popup", "popup.html"), join(DIST_DIR, "popup.html"));
-cpSync(join(SRC_DIR, "popup", "popup.css"), join(DIST_DIR, "popup.css"));
+// Bundle offscreen.js with MediaPipe dependencies
+console.log("📦 Bundling offscreen.js...");
+const offscreenResult = await Bun.build({
+  entrypoints: ["offscreen.js"],
+  outdir: DIST_DIR,
+  target: "browser",
+  format: "esm",
+  minify: false,
+  splitting: false,
+  naming: "offscreen.js",
+  external: [],
+});
 
-// Copy background (simple, no bundling needed)
-console.log("⚙️  Copying background service worker...");
-cpSync(
-  join(SRC_DIR, "background", "background.js"),
-  join(DIST_DIR, "background.js")
-);
+if (!offscreenResult.success) {
+  console.error("Offscreen build failed:", offscreenResult.logs);
+  process.exit(1);
+}
+
+// Copy offscreen.html
+console.log("📄 Copying offscreen.html...");
+cpSync("offscreen.html", join(DIST_DIR, "offscreen.html"));
+
+// Copy popup.html
+console.log("🎭 Copying popup.html...");
+cpSync("popup.html", join(DIST_DIR, "popup.html"));
+
+// Copy popup.js (no bundling needed, it's vanilla JS)
+console.log("📋 Copying popup.js...");
+cpSync("popup.js", join(DIST_DIR, "popup.js"));
 
 console.log("✅ Build completed successfully!");
 console.log(`📦 Extension ready in ${DIST_DIR}/`);
+console.log("\n📌 Next steps:");
+console.log("  1. Open Chrome and go to chrome://extensions/");
+console.log("  2. Enable 'Developer mode' (top right)");
+console.log("  3. Click 'Load unpacked' and select the 'dist' folder");
