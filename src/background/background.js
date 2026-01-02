@@ -1,3 +1,6 @@
+// Import embedding worker
+import './embeddingWorker.js';
+
 function isTabGroupsSupported() {
   return (
     typeof chrome.tabGroups !== "undefined" &&

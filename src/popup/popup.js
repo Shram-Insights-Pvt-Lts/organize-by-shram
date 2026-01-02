@@ -1,3 +1,6 @@
+// Import embedding client (uses background worker)
+import { groupTabsByEmbeddings } from '../utils/embeddingClient.js';
+
 const CHROME_COLORS = [
   "grey",
   "blue",
@@ -108,10 +111,10 @@ async function init() {
     }
     updateProgress(30, "Analyzing pages...");
     const tabData = await extractTabDataWithContent(tabs);
-    updateProgress(60, "Loading patterns...");
-    const storedPatterns = await loadPatterns();
-    updateProgress(80, "Grouping...");
-    const result = groupTabs(tabData, storedPatterns);
+    updateProgress(50, "Loading AI model...");
+    updateProgress(70, "Calculating similarities...");
+    // Use embedding-based grouping via background worker
+    const result = await groupTabsByEmbeddings(tabData, 0.65);
     groups = result.groups;
     ungroupedTabs = result.ungrouped;
     nextGroupId = groups.length;

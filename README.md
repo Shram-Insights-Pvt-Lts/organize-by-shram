@@ -54,11 +54,16 @@ organize-by-shram/
 
 ### How It Works
 
-The extension uses a multi-stage clustering algorithm:
+The extension now uses **AI-powered semantic similarity** with text embeddings:
 
-1. **Category-based grouping**: Groups tabs by detected category (Development, Social, Shopping, etc.)
-2. **Subdomain-based grouping**: Groups tabs from the same subdomain
-3. **Keyword similarity**: Groups tabs with 3+ common keywords or 40%+ keyword overlap
+1. **Text Embeddings**: Uses Transformers.js with the `all-MiniLM-L6-v2` model to generate semantic embeddings for each tab
+2. **Similarity Calculation**: Computes cosine similarity between tab embeddings (title + domain + content)
+3. **Smart Clustering**: Groups tabs with similarity score ≥ 0.65 (configurable)
+4. **Intelligent Naming**: Auto-generates group names based on categories, domains, or common keywords
+
+**Model**: all-MiniLM-L6-v2 (23MB, quantized) - Fast, lightweight, and excellent for semantic text similarity
+
+**Previous approach** (keyword-based): Now replaced with embeddings for much better semantic understanding
 
 ### Features
 
