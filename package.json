@@ -1,5 +1,5 @@
 {
-  "name": "smart-tab-grouper",
+  "name": "reflect-newtab",
   "version": "1.0.0",
   "devDependencies": {
     "@types/bun": "latest",
@@ -8,13 +8,13 @@
   "peerDependencies": {
     "typescript": "^5"
   },
-  "description": "Intelligently group your browser tabs using ML-based clustering",
+  "description": "A calm moment of reflection with every new tab",
   "keywords": [
     "chrome-extension",
-    "tab-management",
-    "productivity",
-    "machine-learning",
-    "clustering"
+    "new-tab",
+    "reflection",
+    "mindfulness",
+    "productivity"
   ],
   "private": true,
   "scripts": {
@@ -22,7 +22,7 @@
     "dev": "bun run build.ts && bun run watch",
     "watch": "bun run --watch build.ts",
     "clean": "rm -rf dist",
-    "package": "bun run build && cd dist && zip -r ../smart-tab-grouper.zip .",
+    "package": "bun run build && cd dist && zip -r ../reflect-newtab.zip .",
     "dev:chrome": "bun run build && open -a 'Google Chrome' --args --load-extension=$(pwd)/dist"
   },
   "type": "module"
