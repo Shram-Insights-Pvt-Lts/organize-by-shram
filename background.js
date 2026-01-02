@@ -253,83 +253,119 @@ async function organizeTabs(sendStatus = null) {
       return { success: false, error: 'Not enough valid tabs' };
     }
 
-    // Step 4: Run DBSCAN clustering
-    if (sendStatus) sendStatus({ status: 'clustering', message: 'Finding patterns...' });
+    // ==================== NEW DOMAIN-FIRST APPROACH ====================
+    // Step 4: Group by domain FIRST (most reliable signal)
+    if (sendStatus) sendStatus({ status: 'clustering', message: 'Grouping by domain...' });
 
-    // Use adaptive epsilon based on data characteristics
-    // Lower epsilon = stricter clustering = more distinct groups
-    const suggestedEps = embeddingCount > 10 ? suggestEpsilon(embeddings) : 0.3;
-    // Cap epsilon at 0.4 for strict semantic grouping (only truly similar tabs)
-    // Tabs that don't meet this threshold will be grouped by domain in the fallback step
-    const epsilon = Math.min(suggestedEps, 0.4);
-    // Adaptive minPoints: require at least 2 points, or 8% of total tabs for large sets
-    // For 18 tabs: minPoints = max(2, floor(18/12)) = max(2, 1) = 2
-    // For 50 tabs: minPoints = max(2, floor(50/12)) = max(2, 4) = 4
-    const minPoints = Math.max(2, Math.floor(embeddingCount / 12));
+    const domainGroups = new Map();
+    const tabIdToDomain = new Map();
 
-    console.log(`[Background] Clustering parameters: epsilon=${epsilon.toFixed(3)}, minPoints=${minPoints}`);
-    console.log(`[Background] Auto-suggested epsilon: ${suggestedEps.toFixed(3)}, capped at: 0.4 for strict semantic grouping`);
+    for (const tab of tabs) {
+      if (!embeddings[tab.id]) continue; // Skip tabs without embeddings
 
-    const { clusters, noise } = dbscan(embeddings, epsilon, minPoints);
+      try {
+        const url = new URL(tab.url);
+        let domain = url.hostname.replace('www.', '');
 
-    console.log(`[Background] Semantic clustering result: ${clusters.length} clusters, ${noise.length} noise points`);
-
-    // Step 4.5: Hybrid approach - group remaining noise tabs by domain
-    const domainClusters = [];
-    if (noise.length > 0) {
-      console.log(`[Background] Running domain-based fallback for ${noise.length} ungrouped tabs...`);
-
-      const domainGroups = new Map();
-
-      // Group noise tabs by domain
-      for (const tabId of noise) {
-        const tab = tabs.find(t => t.id === parseInt(tabId, 10));
-        if (!tab) continue;
-
-        try {
-          const url = new URL(tab.url);
-          let domain = url.hostname.replace('www.', '');
-
-          // Extract main domain (e.g., 'google' from 'google.com')
-          const parts = domain.split('.');
-          if (parts.length >= 2) {
-            domain = parts[parts.length - 2];
-          }
-
-          // Skip generic/local domains
-          if (domain === 'extensions' || domain === 'localhost' || domain.length < 3) {
-            continue;
-          }
-
-          if (!domainGroups.has(domain)) {
-            domainGroups.set(domain, []);
-          }
-          domainGroups.get(domain).push(tabId);
-        } catch (e) {
-          // Skip invalid URLs
+        // Extract main domain (e.g., 'github' from 'github.com')
+        const parts = domain.split('.');
+        if (parts.length >= 2) {
+          domain = parts[parts.length - 2];
         }
-      }
 
-      // Only create domain clusters with 2+ tabs
-      for (const [domain, tabIds] of domainGroups.entries()) {
-        if (tabIds.length >= 2) {
-          domainClusters.push({ domain, tabIds });
-          console.log(`[Background] Domain cluster: ${domain} with ${tabIds.length} tabs`);
+        // Skip generic/local domains
+        if (domain === 'extensions' || domain === 'localhost' || domain.length < 3) {
+          continue;
         }
+
+        tabIdToDomain.set(tab.id.toString(), domain);
+
+        if (!domainGroups.has(domain)) {
+          domainGroups.set(domain, []);
+        }
+        domainGroups.get(domain).push(tab.id.toString());
+      } catch (e) {
+        // Skip invalid URLs
       }
     }
 
-    console.log(`[Background] Final result: ${clusters.length} semantic clusters, ${domainClusters.length} domain clusters`);
+    // Create domain clusters (2+ tabs from same domain)
+    const domainClusters = [];
+    const domainGroupedTabIds = new Set();
 
-    // Step 5: Create tab groups
-    const totalGroups = clusters.length + domainClusters.length;
+    for (const [domain, tabIds] of domainGroups.entries()) {
+      if (tabIds.length >= 2) {
+        domainClusters.push({ domain, tabIds });
+        tabIds.forEach(id => domainGroupedTabIds.add(id));
+        console.log(`[Background] Domain cluster: ${domain} with ${tabIds.length} tabs`);
+      }
+    }
+
+    console.log(`[Background] Domain grouping: ${domainClusters.length} domain groups, ${domainGroupedTabIds.size} tabs grouped`);
+
+    // Step 5: Semantic clustering for REMAINING ungrouped tabs only
+    if (sendStatus) sendStatus({ status: 'clustering', message: 'Finding semantic patterns...' });
+
+    // Filter embeddings to only ungrouped tabs
+    const remainingEmbeddings = {};
+    for (const [tabId, embedding] of Object.entries(embeddings)) {
+      if (!domainGroupedTabIds.has(tabId)) {
+        remainingEmbeddings[tabId] = embedding;
+      }
+    }
+
+    const remainingCount = Object.keys(remainingEmbeddings).length;
+    console.log(`[Background] Running semantic clustering on ${remainingCount} remaining tabs`);
+
+    let semanticClusters = [];
+    if (remainingCount >= 2) {
+      // Use tight epsilon for semantic clustering - we only want truly similar content
+      const suggestedEps = remainingCount > 5 ? suggestEpsilon(remainingEmbeddings) : 0.3;
+      const epsilon = Math.min(suggestedEps, 0.35); // Cap at 0.35 for strict similarity
+      const minPoints = 2;
+
+      console.log(`[Background] Semantic clustering parameters: epsilon=${epsilon.toFixed(3)}, minPoints=${minPoints}`);
+
+      const { clusters, noise } = dbscan(remainingEmbeddings, epsilon, minPoints);
+      semanticClusters = clusters;
+
+      console.log(`[Background] Semantic clustering result: ${clusters.length} clusters, ${noise.length} noise points`);
+    }
+
+    console.log(`[Background] Final result: ${domainClusters.length} domain clusters, ${semanticClusters.length} semantic clusters`);
+
+
+    // Step 6: Create tab groups
+    const totalGroups = domainClusters.length + semanticClusters.length;
     if (sendStatus) sendStatus({ status: 'grouping', message: `Creating ${totalGroups} groups...` });
 
     let groupsCreated = 0;
     const usedColors = new Set();
 
-    // Create semantic clusters first
-    for (const cluster of clusters) {
+    // Create domain clusters FIRST (most reliable grouping)
+    for (const { domain, tabIds: clusterTabIds } of domainClusters) {
+      try {
+        const tabIds = clusterTabIds.map(id => parseInt(id, 10));
+        const groupId = await chrome.tabs.group({ tabIds });
+        const groupTitle = domain.charAt(0).toUpperCase() + domain.slice(1);
+        const groupColor = getRandomColor(usedColors);
+        usedColors.add(groupColor);
+
+        await chrome.tabGroups.update(groupId, {
+          title: groupTitle,
+          color: groupColor,
+          collapsed: false
+        });
+
+        console.log(`[Background] Created domain group "${groupTitle}" with ${tabIds.length} tabs`);
+        groupsCreated++;
+      } catch (error) {
+        console.error('[Background] Error creating domain group:', error);
+      }
+    }
+
+    // Then create semantic clusters
+    for (const cluster of semanticClusters) {
       if (cluster.length < 2) {
         console.log('[Background] Skipping cluster with less than 2 tabs');
         continue;
@@ -366,49 +402,40 @@ async function organizeTabs(sendStatus = null) {
       }
     }
 
-    // Then create domain-based clusters
-    for (const { domain, tabIds: clusterTabIds } of domainClusters) {
+    // Calculate ungrouped tabs
+    const groupedTabIds = new Set();
+    domainClusters.forEach(c => c.tabIds.forEach(id => groupedTabIds.add(id)));
+    semanticClusters.forEach(c => c.forEach(id => groupedTabIds.add(id)));
+
+    // Find tabs that weren't grouped
+    const ungroupedTabIds = Object.keys(embeddings).filter(id => !groupedTabIds.has(id));
+    const remainingUngrouped = ungroupedTabIds.length;
+
+    // Create "Ungrouped" group for remaining tabs (at rightmost position since created last)
+    if (ungroupedTabIds.length > 0) {
       try {
-        // Convert tab IDs to integers
-        const tabIds = clusterTabIds.map(id => parseInt(id, 10));
-
-        // Get tab objects
-        const clusterTabs = tabs.filter(tab => tabIds.includes(tab.id));
-
-        // Group the tabs
+        const tabIds = ungroupedTabIds.map(id => parseInt(id, 10));
         const groupId = await chrome.tabs.group({ tabIds });
 
-        // Capitalize domain name for title
-        const groupTitle = domain.charAt(0).toUpperCase() + domain.slice(1);
-
-        // Pick a color
-        const groupColor = getRandomColor(usedColors);
-        usedColors.add(groupColor);
-
-        // Update the group
         await chrome.tabGroups.update(groupId, {
-          title: `${groupTitle} (d)`,
-          color: groupColor,
-          collapsed: false
+          title: 'Ungrouped',
+          color: 'grey',
+          collapsed: true
         });
 
-        console.log(`[Background] Created domain group "${groupTitle}" with ${tabIds.length} tabs`);
+        console.log(`[Background] Created Ungrouped group with ${tabIds.length} tabs`);
         groupsCreated++;
       } catch (error) {
-        console.error('[Background] Error creating domain group:', error);
+        console.error('[Background] Error creating Ungrouped group:', error);
       }
     }
 
-    // Calculate how many tabs are still ungrouped
-    const groupedByDomain = domainClusters.reduce((sum, cluster) => sum + cluster.tabIds.length, 0);
-    const remainingUngrouped = noise.length - groupedByDomain;
-
     if (sendStatus) {
-      const semanticCount = clusters.length;
       const domainCount = domainClusters.length;
+      const semanticCount = semanticClusters.length;
       let message = `Created ${groupsCreated} groups`;
-      if (semanticCount > 0 && domainCount > 0) {
-        message += ` (${semanticCount} semantic, ${domainCount} domain)`;
+      if (domainCount > 0 && semanticCount > 0) {
+        message += ` (${domainCount} domain, ${semanticCount} semantic)`;
       }
       if (remainingUngrouped > 0) {
         message += `, ${remainingUngrouped} tabs ungrouped`;
@@ -425,8 +452,8 @@ async function organizeTabs(sendStatus = null) {
     return {
       success: true,
       groupsCreated,
-      semanticGroups: clusters.length,
       domainGroups: domainClusters.length,
+      semanticGroups: semanticClusters.length,
       noiseCount: remainingUngrouped,
       totalTabs: tabs.length
     };
