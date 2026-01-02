@@ -1,5 +1,5 @@
-// Import embedding client (uses background worker)
-import { groupTabsByEmbeddings } from '../utils/embeddingClient.js';
+// Use simple keyword-based grouping (reliable, fast, works everywhere)
+import { groupTabs } from '../utils/simpleGrouper.js';
 
 const CHROME_COLORS = [
   "grey",
@@ -111,10 +111,9 @@ async function init() {
     }
     updateProgress(30, "Analyzing pages...");
     const tabData = await extractTabDataWithContent(tabs);
-    updateProgress(50, "Loading AI model...");
-    updateProgress(70, "Calculating similarities...");
-    // Use embedding-based grouping via background worker
-    const result = await groupTabsByEmbeddings(tabData, 0.65);
+    updateProgress(70, "Grouping tabs...");
+    // Use simple but effective multi-signal grouping
+    const result = groupTabs(tabData, 0.5);
     groups = result.groups;
     ungroupedTabs = result.ungrouped;
     nextGroupId = groups.length;
@@ -462,87 +461,7 @@ function extractKeywords(title, url, pc = "") {
     .slice(0, 15)
     .map(([w]) => w);
 }
-function groupTabs(tabs, patterns) {
-  if (tabs.length === 0) return { groups: [], ungrouped: [] };
-  const clusters = [],
-    assigned = new Set();
-  const cg = {};
-  tabs.forEach((t) => {
-    if (t.category && !assigned.has(t.id)) {
-      if (!cg[t.category]) cg[t.category] = [];
-      cg[t.category].push(t);
-    }
-  });
-  Object.entries(cg).forEach(([c, ts]) => {
-    if (ts.length >= 2) {
-      clusters.push({ tabs: ts, name: c });
-      ts.forEach((t) => assigned.add(t.id));
-    }
-  });
-  const sg = {};
-  tabs.forEach((t) => {
-    if (!assigned.has(t.id) && t.subdomain) {
-      const k = t.subdomain + "." + t.domain;
-      if (!sg[k]) sg[k] = [];
-      sg[k].push(t);
-    }
-  });
-  Object.entries(sg).forEach(([s, ts]) => {
-    if (ts.length >= 2) {
-      clusters.push({ tabs: ts });
-      ts.forEach((t) => assigned.add(t.id));
-    }
-  });
-  const rem = tabs.filter((t) => !assigned.has(t.id));
-  for (let i = 0; i < rem.length; i++) {
-    if (assigned.has(rem[i].id)) continue;
-    const cl = { tabs: [rem[i]] };
-    assigned.add(rem[i].id);
-    for (let j = i + 1; j < rem.length; j++) {
-      if (assigned.has(rem[j].id)) continue;
-      const ov = rem[i].keywords.filter((k) => rem[j].keywords.includes(k));
-      const ml = Math.min(rem[i].keywords.length, rem[j].keywords.length);
-      if (ov.length >= 3 || (ml > 0 && ov.length / ml >= 0.4)) {
-        cl.tabs.push(rem[j]);
-        assigned.add(rem[j].id);
-      }
-    }
-    clusters.push(cl);
-  }
-  const vg = [],
-    ug = [];
-  clusters.forEach((c, i) => {
-    if (c.tabs.length >= 2) {
-      vg.push({
-        id: "group-" + i,
-        name: c.name || generateGroupName(c.tabs),
-        color: CHROME_COLORS[vg.length % CHROME_COLORS.length],
-        tabs: c.tabs,
-        tabIds: c.tabs.map((t) => t.id),
-      });
-    } else {
-      ug.push(...c.tabs);
-    }
-  });
-  return { groups: vg, ungrouped: ug };
-}
-function generateGroupName(tabs) {
-  if (tabs.length === 0) return "Empty";
-  const cats = tabs.map((t) => t.category).filter(Boolean);
-  if (cats.length === tabs.length && new Set(cats).size === 1) return cats[0];
-  const ak = tabs.flatMap((t) => t.keywords),
-    kc = {};
-  ak.forEach((k) => {
-    kc[k] = (kc[k] || 0) + 1;
-  });
-  const sk = Object.entries(kc)
-    .filter(([k, c]) => c >= Math.ceil(tabs.length * 0.5))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2)
-    .map(([k]) => k);
-  if (sk.length > 0) return formatGroupName(sk.join(" "));
-  return "Related Tabs";
-}
+// groupTabs is now imported from simpleGrouper.js
 function formatGroupName(n) {
   return n
     .split(" ")

@@ -55,23 +55,12 @@ console.log("🎭 Copying popup HTML and CSS...");
 cpSync(join(SRC_DIR, "popup", "popup.html"), join(DIST_DIR, "popup.html"));
 cpSync(join(SRC_DIR, "popup", "popup.css"), join(DIST_DIR, "popup.css"));
 
-// Bundle background worker with embedding support
-console.log("⚙️  Bundling background service worker...");
-const bgResult = await Bun.build({
-  entrypoints: [join(SRC_DIR, "background", "background.js")],
-  outdir: DIST_DIR,
-  target: "browser",
-  format: "iife", // Use IIFE for better compatibility
-  minify: false,
-  splitting: false,
-  naming: "background.js",
-  external: [],
-});
-
-if (!bgResult.success) {
-  console.error("Background build failed:", bgResult.logs);
-  process.exit(1);
-}
+// Copy background (simple, no bundling needed)
+console.log("⚙️  Copying background service worker...");
+cpSync(
+  join(SRC_DIR, "background", "background.js"),
+  join(DIST_DIR, "background.js")
+);
 
 console.log("✅ Build completed successfully!");
 console.log(`📦 Extension ready in ${DIST_DIR}/`);
