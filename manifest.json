@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TabSmart",
+  "name": "Organize by Shram",
   "version": "1.0.0",
-  "description": "Automatically organize open browser tabs into logical groups using local, privacy-first AI embeddings",
+  "description": "Automatically organize open browser tabs into logical groups using local, privacy-first AI",
   "permissions": [
     "tabs",
     "tabGroups",

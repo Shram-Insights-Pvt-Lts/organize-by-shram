@@ -1,15 +1,18 @@
-# TabSmart - AI-Powered Tab Organizer
+# Organize by Shram - AI-Powered Tab Organizer
 
 > **Automatically organize open browser tabs into logical groups using local, privacy-first AI embeddings**
 
-TabSmart is a Chrome Extension (Manifest V3) that uses Google's MediaPipe Text Embedder (Universal Sentence Encoder) to intelligently cluster your tabs into meaningful groups. All processing happens **100% locally** in your browser - no data is ever sent to external servers.
+Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approach combining domain-based grouping and Google's MediaPipe Text Embedder (Universal Sentence Encoder) to intelligently cluster your tabs into meaningful groups. All processing happens **100% locally** in your browser - no data is ever sent to external servers.
 
 ## Features
 
+- **Hybrid Clustering**: Two-stage approach combining domain grouping + semantic AI clustering
+- **Domain-First Grouping**: Instantly groups tabs from the same website (e.g., all GitHub tabs together)
 - **Local AI Processing**: Uses MediaPipe WASM models running entirely in your browser
 - **Privacy-First**: Zero external API calls - your browsing data never leaves your device
-- **Smart Clustering**: DBSCAN algorithm with cosine similarity for intelligent grouping
-- **Automatic Naming**: Generates meaningful group titles based on tab content
+- **Smart Semantic Clustering**: DBSCAN algorithm with cosine similarity for remaining tabs
+- **Automatic Naming**: Generates meaningful group titles based on tab content and domains
+- **Clear All Groups**: One-click button to ungroup all tabs
 - **Arc Browser Compatible**: Tab groups work seamlessly as Folders in Arc browser
 - **Zero Configuration**: Just click and organize!
 
@@ -27,8 +30,9 @@ TabSmart is a Chrome Extension (Manifest V3) that uses Google's MediaPipe Text E
 3. **background.js** (The Orchestrator):
    - Manages offscreen document lifecycle
    - Coordinates tab querying and grouping
-   - Implements DBSCAN clustering
+   - Implements hybrid clustering: domain-first, then semantic DBSCAN
    - Generates group titles and assigns colors
+   - Handles "Clear All Groups" functionality
 
 4. **lib/dbscan.js** (The Algorithm):
    - Pure JavaScript DBSCAN implementation
@@ -36,13 +40,16 @@ TabSmart is a Chrome Extension (Manifest V3) that uses Google's MediaPipe Text E
    - Auto-tuning capabilities for epsilon parameter
 
 5. **popup.html/js** (The Interface):
-   - Simple "Organize Now" button
-   - Real-time status updates during processing
+   - "Organize Now" button with real-time status updates
+   - "Clear All Groups" button to ungroup all tabs
+   - Clean, minimal UI matching Shram Agent Client design language
 
 ## How It Works
 
+### Hybrid Two-Stage Clustering Approach
+
 ```
-User clicks "Organize"
+User clicks "Organize Now"
     ↓
 Background creates/reuses offscreen document
     ↓
@@ -50,12 +57,31 @@ Query all tabs in current window
     ↓
 Send tabs to offscreen → Generate embeddings (MediaPipe)
     ↓
-Run DBSCAN clustering on embeddings
+STAGE 1: Domain-Based Grouping
+├─ Group tabs from same domain (2+ tabs)
+├─ Extract domain names (e.g., "github", "stackoverflow")
+└─ Create domain groups (most reliable signal)
     ↓
-Create tab groups + Generate titles + Assign colors
+STAGE 2: Semantic Clustering (for remaining tabs)
+├─ Filter out already-grouped tabs
+├─ Run DBSCAN clustering on embeddings (tight epsilon=0.3-0.35)
+└─ Create semantic groups for truly similar content
+    ↓
+Create "Ungrouped" group for outliers (collapsed)
+    ↓
+Generate titles + Assign colors + Update UI
     ↓
 Done!
 ```
+
+### Why Domain-First?
+
+Domain grouping provides the most reliable signal for tab organization:
+- **Accuracy**: Tabs from the same site are almost always related
+- **Speed**: No AI processing needed for domain extraction
+- **User Intent**: Users often want GitHub tabs grouped together, regardless of semantic similarity
+
+Semantic clustering then handles the remaining tabs that don't share domains but may be topically related (e.g., different documentation sites about the same topic).
 
 ## Installation & Setup
 
@@ -116,29 +142,47 @@ This will create a `dist/` folder with the bundled extension.
 
 ### Step 5: Use the Extension
 
-1. Click the TabSmart extension icon in your toolbar
-2. Click "Organize Now"
-3. Watch as your tabs are intelligently grouped!
+1. Click the Organize by Shram extension icon in your toolbar
+2. Click "Organize Now" to create groups
+3. Watch as your tabs are intelligently grouped (domain groups first, then semantic groups)!
+4. Use "Clear All Groups" to ungroup all tabs at once
 
 ## Configuration
 
-### Tuning DBSCAN Parameters
+### Tuning Clustering Parameters
 
-Edit `background.js` to adjust clustering behavior:
+The extension uses a hybrid approach with different parameters for each stage:
+
+#### Domain Grouping (Stage 1)
+Edit `background.js` around line 296:
 
 ```javascript
-// Default values
-const epsilon = 0.4;  // Similarity threshold (0-2, lower = stricter)
-const minPoints = 2;  // Minimum tabs to form a group
+// Domain grouping - groups 2+ tabs from same domain
+if (tabIds.length >= 2) {
+  // Create domain group
+}
 ```
 
-- **epsilon**: Controls how similar tabs must be to group together
-  - Lower values (0.2-0.3): More, smaller groups
-  - Higher values (0.5-0.6): Fewer, larger groups
-  - Default: 0.4 or auto-calculated
+- No tuning needed - automatically groups tabs from the same domain
+- Minimum 2 tabs required to form a domain group
 
-- **minPoints**: Minimum number of tabs required to form a cluster
-  - Default: 2 (any 2 similar tabs can form a group)
+#### Semantic Clustering (Stage 2)
+Edit `background.js` around line 323:
+
+```javascript
+// Semantic clustering - only for ungrouped tabs
+const suggestedEps = remainingCount > 5 ? suggestEpsilon(remainingEmbeddings) : 0.3;
+const epsilon = Math.min(suggestedEps, 0.35); // Cap at 0.35 for strict similarity
+const minPoints = 2;
+```
+
+- **epsilon**: Semantic similarity threshold (capped at 0.35 for strict grouping)
+  - Lower values (0.25-0.30): Very strict semantic similarity required
+  - Higher values (0.35-0.45): More lenient semantic grouping
+  - Default: Auto-calculated or 0.3, capped at 0.35
+
+- **minPoints**: Minimum tabs required to form a semantic cluster
+  - Default: 2 (any 2 semantically similar tabs can form a group)
 
 ### Customizing Group Colors
 
@@ -183,11 +227,14 @@ bun run dev:chrome
 
 ### Debugging
 
-- **Background Script**: Open `chrome://extensions/`, find TabSmart, click "service worker"
+- **Background Script**: Open `chrome://extensions/`, find Organize by Shram, click "service worker"
 - **Offscreen Document**: Check background script console for offscreen logs
 - **Popup**: Right-click extension icon → Inspect popup
 
-Enable verbose logging by checking browser console in each context.
+Enable verbose logging by checking browser console in each context. Look for:
+- `[Background] Domain grouping: X domain groups, Y tabs grouped`
+- `[Background] Semantic clustering result: X clusters, Y noise points`
+- `[Background] Final result: X domain clusters, Y semantic clusters`
 
 ## Technical Details
 
@@ -200,13 +247,20 @@ Service Workers in Manifest V3 have strict limitations:
 
 The offscreen API provides a hidden document that can run WASM models like MediaPipe while remaining invisible to the user.
 
-### Why DBSCAN?
+### Why Hybrid Domain + Semantic Clustering?
 
+**Domain-First Approach:**
+- Most reliable signal: tabs from the same site are usually related
+- Fast: no AI processing needed
+- User-friendly: predictable grouping (all GitHub tabs together)
+
+**Semantic Clustering (DBSCAN) for Remaining Tabs:**
 Unlike K-Means (which requires pre-specifying cluster count), DBSCAN:
 - Automatically determines the number of groups
-- Handles noise (tabs that don't fit any cluster)
+- Handles noise (tabs that don't fit any cluster → "Ungrouped" group)
 - Works well with varying cluster sizes
 - Uses density-based grouping (semantic similarity)
+- Only processes ungrouped tabs (more efficient)
 
 ### Why Cosine Similarity?
 
@@ -240,7 +294,9 @@ For text embeddings:
 ## Performance
 
 - **Model Load Time**: ~2-3 seconds (first run only, cached thereafter)
-- **Processing Time**: ~100-500ms for 50 tabs
+- **Domain Grouping**: Instant (no AI processing)
+- **Semantic Processing Time**: ~100-500ms for remaining ungrouped tabs
+- **Total Processing Time**: ~200-800ms for 50 tabs (depending on distribution)
 - **Memory Usage**: ~50-100MB while active (offscreen document)
 - **Battery Impact**: Minimal (only runs on demand)
 
@@ -257,7 +313,10 @@ For text embeddings:
 ### Tabs aren't grouping
 - Check background script console for errors
 - Verify you have at least 2 tabs open
-- Try adjusting epsilon value (increase for more grouping)
+- Domain groups require 2+ tabs from the same domain
+- Semantic groups require similar content (tight epsilon=0.35)
+- Try adjusting epsilon value in background.js (increase cap for more semantic grouping)
+- Check if tabs are ending up in "Ungrouped" group (normal for outliers)
 
 ### Model fails to load
 - Check internet connection (needed to download MediaPipe model from CDN on first run)
@@ -274,6 +333,20 @@ MIT License
 - **Universal Sentence Encoder**: Semantic text embeddings model
 - **DBSCAN**: Density-based clustering algorithm
 
+## FAQ
+
+### How does domain grouping work?
+The extension extracts the main domain from each tab's URL (e.g., "github" from "github.com") and groups tabs that share the same domain. This happens before AI clustering and provides the most reliable grouping signal.
+
+### What's the "(s)" suffix on some group names?
+Groups with "(s)" suffix are semantic clusters created by AI analysis, while groups without the suffix are domain-based groups.
+
+### Why are some tabs in "Ungrouped"?
+Tabs that don't share a domain with 2+ other tabs AND don't have strong semantic similarity to other ungrouped tabs are placed in the "Ungrouped" group (collapsed by default). This prevents forcing unrelated tabs into groups.
+
+### Can I adjust grouping strictness?
+Yes! Edit the `epsilon` cap in `background.js` line 324. Lower values (0.25-0.30) create stricter semantic groups, higher values (0.40-0.50) create more lenient groups. Domain grouping is always enabled.
+
 ---
 
-Made with privacy in mind for tab enthusiasts
+Made with privacy in mind for tab enthusiasts by Shram

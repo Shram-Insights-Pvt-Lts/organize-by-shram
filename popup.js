@@ -135,4 +135,4 @@ organizeBtn.addEventListener('click', handleOrganize);
 clearGroupsBtn.addEventListener('click', handleClearGroups);
 
 // Initialize
-console.log('[Popup] TabSmart popup loaded');
+console.log('[Popup] Organize popup loaded');

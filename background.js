@@ -532,4 +532,4 @@ chrome.action.onClicked.addListener(async (tab) => {
   await organizeTabs();
 });
 
-console.log('[Background] TabSmart background script loaded');
+console.log('[Background] Organize background script loaded');
