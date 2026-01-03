@@ -1,29 +1,36 @@
 {
-  "name": "smart-tab-grouper",
+  "name": "tabsmart",
   "version": "1.0.0",
-  "devDependencies": {
-    "@types/bun": "latest",
-    "@types/chrome": "^0.1.32"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "description": "Intelligently group your browser tabs using ML-based clustering",
+  "description": "Chrome Extension that automatically organizes tabs using local AI embeddings",
   "keywords": [
     "chrome-extension",
     "tab-management",
+    "ai",
+    "webllm",
+    "clustering",
+    "privacy",
     "productivity",
-    "machine-learning",
-    "clustering"
+    "machine-learning"
   ],
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "bun run build.ts",
     "dev": "bun run build.ts && bun run watch",
     "watch": "bun run --watch build.ts",
     "clean": "rm -rf dist",
-    "package": "bun run build && cd dist && zip -r ../smart-tab-grouper.zip .",
+    "package": "bun run build && cd dist && zip -r ../tabsmart.zip .",
     "dev:chrome": "bun run build && open -a 'Google Chrome' --args --load-extension=$(pwd)/dist"
   },
-  "type": "module"
+  "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.78"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/chrome": "^0.1.32",
+    "esbuild": "^0.19.11"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }
