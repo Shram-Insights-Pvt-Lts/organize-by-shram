@@ -39,7 +39,7 @@ async function handleOrganize() {
   try {
     // Disable button
     organizeBtn.disabled = true;
-    organizeBtn.textContent = 'Organizing...';
+    organizeBtn.textContent = 'Organizing Tabs...';
 
     // Show initial status
     updateStatus('initializing', null, true);
@@ -75,7 +75,7 @@ async function handleOrganize() {
     // Re-enable button after a delay
     setTimeout(() => {
       organizeBtn.disabled = false;
-      organizeBtn.textContent = 'Organize Now';
+      organizeBtn.textContent = 'Organize Tabs';
     }, 2000);
   }
 }
@@ -102,7 +102,7 @@ async function handleClearGroups() {
   try {
     // Disable button
     clearGroupsBtn.disabled = true;
-    clearGroupsBtn.textContent = 'Clearing...';
+    clearGroupsBtn.textContent = 'Ungrouping...';
 
     // Show status
     updateStatus('clearing', 'Removing all tab groups...', true);
@@ -125,7 +125,7 @@ async function handleClearGroups() {
     // Re-enable button after a delay
     setTimeout(() => {
       clearGroupsBtn.disabled = false;
-      clearGroupsBtn.textContent = 'Clear All Groups';
+      clearGroupsBtn.textContent = 'Ungroup';
     }, 1000);
   }
 }

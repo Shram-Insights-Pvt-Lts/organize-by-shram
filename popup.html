@@ -2,9 +2,14 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Organize by Shram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Serif:opsz@12..24&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0..1,0"
+    rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -13,243 +18,284 @@
     }
 
     body {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
       width: 320px;
-      padding: 16px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 320px;
+      padding: 21px 18px 24px 18px;
       background: #ffffff;
-      color: #000000;
     }
 
     @media (prefers-color-scheme: dark) {
       body {
+        color: #ffffff;
         background: #202020;
+      }
+    }
+
+    .compWrap {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .row1 {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .row1 h1 {
+      font-family: "Hedvig Letters Serif", serif;
+      font-size: 21px;
+      line-height: 21px;
+      font-weight: 500;
+      color: #000000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row1 h1 {
         color: #ffffff;
       }
     }
 
-    .container {
+    .row1 p {
+      font-size: 14px;
+      line-height: 14px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row1 p {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .row2 {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      width: 100%;
     }
 
-    .header {
-      text-align: left;
-      padding: 4px 0;
+    .col1 {
+      display: flex;
+      gap: 12px;
+      width: 100%;
     }
 
-    .header h1 {
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 2px;
+    .col1 .button {
+      width: 100%;
+      min-height: 33px;
+      background: linear-gradient(to bottom right,
+          rgba(253, 188, 64, 1),
+          rgba(253, 188, 64, 0.8));
       color: #000000;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      box-shadow: none;
+      cursor: pointer;
     }
 
     @media (prefers-color-scheme: dark) {
-      .header h1 {
+      .col1 .button {
         color: #ffffff;
       }
     }
 
-    .header p {
-      font-size: 12px;
-      font-weight: 300;
-      color: rgba(0, 0, 0, 0.5);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .header p {
-        color: rgba(255, 255, 255, 0.5);
-      }
-    }
-
-    .button {
-      background: linear-gradient(to bottom right, rgba(253, 188, 64, 1), rgba(253, 188, 64, 0.9));
+    .col1 .button.secondary {
+      max-width: 96px;
+      min-height: 33px;
+      background: rgba(0, 0, 0, 0.06);
       color: #000000;
-      border: none;
-      padding: 12px 16px;
-      font-size: 13px;
-      font-weight: 400;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      box-shadow: none;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    }
-
-    .button:hover:not(:disabled) {
-      background: linear-gradient(to bottom right, rgba(253, 188, 64, 0.95), rgba(253, 188, 64, 0.85));
-      transform: none;
-    }
-
-    .button:active:not(:disabled) {
-      background: linear-gradient(to bottom right, rgba(253, 188, 64, 0.9), rgba(253, 188, 64, 0.8));
-    }
-
-    .button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .button.secondary {
-      background: rgba(0, 0, 0, 0.05);
-      color: rgba(0, 0, 0, 0.5);
-      border: 0.5px solid rgba(0, 0, 0, 0.15);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 12px;
-      padding: 10px 14px;
-      font-weight: 300;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .button.secondary {
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.5);
-        border: 0.5px solid rgba(255, 255, 255, 0.15);
-      }
-    }
-
-    .button.secondary:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.08);
-      border-color: rgba(0, 0, 0, 0.2);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .button.secondary:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-    }
-
-    .status-container {
-      background: rgba(0, 0, 0, 0.03);
-      border: 0.5px solid rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-      padding: 12px;
-      min-height: 60px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .status-container {
-        background: rgba(255, 255, 255, 0.04);
-        border: 0.5px solid rgba(255, 255, 255, 0.1);
-      }
-    }
-
-    .status-text {
-      font-size: 12px;
-      font-weight: 300;
-      line-height: 1.5;
-      text-align: center;
-      color: rgba(0, 0, 0, 0.5);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .status-text {
-        color: rgba(255, 255, 255, 0.5);
-      }
-    }
-
-    .status-text.loading {
-      opacity: 1;
-    }
-
-    .status-text.success {
-      color: #4aa13b;
-      font-weight: 400;
-    }
-
-    .status-text.error {
-      color: #dd2828;
-      font-weight: 400;
-    }
-
-    .spinner {
-      border: 2px solid rgba(0, 0, 0, 0.1);
-      border-top: 2px solid rgba(253, 188, 64, 1);
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 8px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .spinner {
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        border-top: 2px solid rgba(253, 188, 64, 1);
-      }
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .info {
-      background: rgba(253, 188, 64, 0.1);
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-size: 11px;
-      font-weight: 300;
-      text-align: center;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .info {
-        background: rgba(253, 188, 64, 0.12);
-        color: rgba(255, 255, 255, 0.6);
-      }
-    }
-
-    .info strong {
-      color: #a77008;
       font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      box-shadow: none;
+      cursor: pointer;
     }
 
     @media (prefers-color-scheme: dark) {
-      .info strong {
-        color: #cc8d14;
+      .col1 .button.secondary {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    .row2 p {
+      text-align: center;
+      font-size: 12px;
+      line-height: 12px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row2 p {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .col2 {
+      display: flex;
+      gap: 9px;
+      padding: 9px 9px 12px 9px;
+      background: rgba(78, 161, 59, 0.12);
+      border: none;
+      border-radius: 6px;
+    }
+
+    .col2 .iconWrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+    }
+
+    .col2 .icon1 {
+      width: 24px;
+      height: 24px;
+      font-size: 24px;
+      color: rgba(74, 161, 59, 1);
+    }
+
+    .col2 p {
+      font-size: 12px;
+      line-height: 14px;
+      font-weight: 300;
+      color: rgba(74, 161, 59, 1);
+    }
+
+    .row3 {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .row3 .horLine {
+      width: 100%;
+      height: 1px;
+      margin-top: 2px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row3 .horLine {
+        background: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .row3 .footer {
+      display: flex;
+      width: 100%;
+    }
+
+    .row3 .footer p {
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      line-height: 12px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row3 .footer p {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .row3 .footer .icon2 {
+      margin-bottom: 1.5px;
+      font-size: 12.5px;
+      vertical-align: middle;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .row3 .footer a {
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      line-height: 12px;
+      font-weight: 400;
+      text-decoration: underline;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .row3 .footer a {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    #statusArea {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+
+    @media (prefers-color-scheme: dark) {
+      #statusArea {
+        color: rgba(255, 255, 255, 0.5);
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Organize by Shram</h1>
+  <div class="compWrap">
+    <!-- Header -->
+    <div class="row1">
+      <h1>Organize</h1>
       <p>AI-Powered Tab Organization</p>
     </div>
 
-    <button id="organizeBtn" class="button">
-      Organize Now
-    </button>
+    <!-- Buttons -->
+    <div class="row2">
+      <div class="col1">
+        <button id="organizeBtn" class="button">Organize Tabs</button>
 
-    <button id="clearGroupsBtn" class="button secondary">
-      Clear All Groups
-    </button>
-
-    <div class="status-container">
-      <div id="statusArea">
-        <div class="status-text">
-          Click "Organize Now" to automatically group your tabs
-        </div>
+        <button id="clearGroupsBtn" class="button secondary">
+          Ungroup
+        </button>
       </div>
+
+      <p>Press “Organize” to automatically group your tabs</p>
     </div>
 
-    <div class="info">
-      <strong>100% Private</strong> - All processing happens locally in your browser. No data is sent to external
-      servers.
+    <!-- Info -->
+    <div class="row3">
+      <div class="col2">
+        <div class="iconWrap">
+          <span class="material-symbols-outlined icon1">lock</span>
+        </div>
+
+        <p>All processing happens in your browser<br>Your data never leaves your device</p>
+      </div>
+
+      <!-- Status Area (do not delete) -->
+      <div id="statusArea"></div>
+
+      <div class="horLine"></div>
+
+      <div class="footer">
+        <p>Made with <span class="material-symbols-outlined icon2">favorite</span>
+          by <a href="https://www.shram.ai" target="_blank">Team Shram</a></p>
+      </div>
     </div>
   </div>
 
