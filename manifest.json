@@ -35,8 +35,14 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["offscreen.html", "wasm/*", "models/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "offscreen.html",
+        "wasm/*",
+        "models/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
