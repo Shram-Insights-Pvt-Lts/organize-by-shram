@@ -2,17 +2,18 @@
 
 > **Automatically organize open browser tabs into logical groups using local, privacy-first AI embeddings**
 
-Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approach combining domain-based grouping and Google's MediaPipe Text Embedder (Universal Sentence Encoder) to intelligently cluster your tabs into meaningful groups. All processing happens **100% locally** in your browser - no data is ever sent to external servers.
+Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approach combining domain-based grouping and WebLLM's Snowflake Arctic Embed model to intelligently cluster your tabs into meaningful groups. All processing happens **100% locally** in your browser - no data is ever sent to external servers.
 
 ## Features
 
 - **Hybrid Clustering**: Two-stage approach combining domain grouping + semantic AI clustering
 - **Domain-First Grouping**: Instantly groups tabs from the same website (e.g., all GitHub tabs together)
-- **Local AI Processing**: Uses MediaPipe WASM models running entirely in your browser
+- **Local AI Processing**: Uses WebLLM models running entirely in your browser
 - **Privacy-First**: Zero external API calls - your browsing data never leaves your device
 - **Smart Semantic Clustering**: DBSCAN algorithm with cosine similarity for remaining tabs
 - **Automatic Naming**: Generates meaningful group titles based on tab content and domains
-- **Clear All Groups**: One-click button to ungroup all tabs
+- **Quick Ungroup**: One-click button to remove all tab groups
+- **Modern UI**: Clean, minimal interface with dark mode support
 - **Arc Browser Compatible**: Tab groups work seamlessly as Folders in Arc browser
 - **Zero Configuration**: Just click and organize!
 
@@ -23,7 +24,7 @@ Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approac
 1. **manifest.json**: Manifest V3 configuration with required permissions (`tabs`, `tabGroups`, `offscreen`)
 
 2. **offscreen.js** (The Brain):
-   - Hosts MediaPipe Text Embedder WASM model
+   - Hosts WebLLM AI model (snowflake-arctic-embed)
    - Generates vector embeddings for tab titles/URLs
    - Runs in offscreen document to avoid Service Worker limitations
 
@@ -32,7 +33,7 @@ Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approac
    - Coordinates tab querying and grouping
    - Implements hybrid clustering: domain-first, then semantic DBSCAN
    - Generates group titles and assigns colors
-   - Handles "Clear All Groups" functionality
+   - Handles tab ungrouping functionality
 
 4. **lib/dbscan.js** (The Algorithm):
    - Pure JavaScript DBSCAN implementation
@@ -40,22 +41,24 @@ Organize by Shram is a Chrome Extension (Manifest V3) that uses a hybrid approac
    - Auto-tuning capabilities for epsilon parameter
 
 5. **popup.html/js** (The Interface):
-   - "Organize Now" button with real-time status updates
-   - "Clear All Groups" button to ungroup all tabs
-   - Clean, minimal UI matching Shram Agent Client design language
+   - "Organize Tabs" button with real-time status updates
+   - "Ungroup" button to quickly remove all tab groups
+   - Modern, minimal UI with dark mode support
+   - Privacy-focused design with local processing indicators
+   - Powered by Shram design language
 
 ## How It Works
 
 ### Hybrid Two-Stage Clustering Approach
 
 ```
-User clicks "Organize Now"
+User clicks "Organize Tabs"
     ↓
 Background creates/reuses offscreen document
     ↓
 Query all tabs in current window
     ↓
-Send tabs to offscreen → Generate embeddings (MediaPipe)
+Send tabs to offscreen → Generate embeddings (WebLLM)
     ↓
 STAGE 1: Domain-Based Grouping
 ├─ Group tabs from same domain (2+ tabs)
@@ -143,9 +146,15 @@ This will create a `dist/` folder with the bundled extension.
 ### Step 5: Use the Extension
 
 1. Click the Organize by Shram extension icon in your toolbar
-2. Click "Organize Now" to create groups
+2. Click **"Organize Tabs"** to create groups
 3. Watch as your tabs are intelligently grouped (domain groups first, then semantic groups)!
-4. Use "Clear All Groups" to ungroup all tabs at once
+4. Use **"Ungroup"** to quickly remove all tab groups at once
+
+The extension features a clean, modern UI with:
+- Real-time status updates during organization
+- Privacy indicators showing local processing
+- Dark mode support matching your system preferences
+- Quick access to both organize and ungroup functions
 
 ## Configuration
 
@@ -245,7 +254,7 @@ Service Workers in Manifest V3 have strict limitations:
 - Unreliable for long-running operations
 - Cannot load WASM modules reliably
 
-The offscreen API provides a hidden document that can run WASM models like MediaPipe while remaining invisible to the user.
+The offscreen API provides a hidden document that can run WASM models like WebLLM while remaining invisible to the user.
 
 ### Why Hybrid Domain + Semantic Clustering?
 
@@ -288,8 +297,11 @@ For text embeddings:
 
 - **No Network Requests**: All processing is local (except initial model download from CDN)
 - **No Data Collection**: No analytics, tracking, or telemetry
-- **No External APIs**: MediaPipe models loaded from CDN but processing is local
+- **No External APIs**: WebLLM models loaded from MLC-AI CDN but all processing is local
+- **Privacy by Design**: UI clearly indicates that data never leaves your device
 - **Open Source**: Fully auditable code
+
+**Your data stays on your device.** The extension includes privacy indicators in the UI to remind you that all processing happens locally in your browser.
 
 ## Performance
 
@@ -319,9 +331,10 @@ For text embeddings:
 - Check if tabs are ending up in "Ungrouped" group (normal for outliers)
 
 ### Model fails to load
-- Check internet connection (needed to download MediaPipe model from CDN on first run)
+- Check internet connection (needed to download WebLLM model from MLC-AI CDN on first run)
 - Clear browser cache and reload extension
 - Check offscreen document console for WASM errors
+- The model is ~140MB and may take a few seconds to download on first use
 
 ## License
 
@@ -329,9 +342,10 @@ MIT License
 
 ## Credits
 
-- **MediaPipe**: Google's ML framework for on-device processing
-- **Universal Sentence Encoder**: Semantic text embeddings model
+- **WebLLM**: MLC-AI's framework for running LLMs in the browser
+- **Snowflake Arctic Embed**: Semantic text embeddings model
 - **DBSCAN**: Density-based clustering algorithm
+- **Design**: Shram design system
 
 ## FAQ
 
@@ -349,4 +363,12 @@ Yes! Edit the `epsilon` cap in `background.js` line 324. Lower values (0.25-0.30
 
 ---
 
-Made with privacy in mind for tab enthusiasts by Shram
+## Links
+
+- **Website**: [shram.ai](https://www.shram.ai)
+- **Privacy Policy**: [PRIVACY.md](PRIVACY.md)
+- **Report Issues**: [GitHub Issues](https://github.com/Shram-Insights-Pvt-Lts/organize-by-shram/issues)
+
+---
+
+Made with ❤️ by Team Shram • Privacy-First Tab Organization
