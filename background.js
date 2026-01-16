@@ -92,6 +92,46 @@ async function hasOffscreenDocument() {
 /**
  * Create or reuse the offscreen document
  */
+/**
+ * Wait for offscreen document to be ready by polling with PING messages
+ */
+async function waitForOffscreenReady(maxAttempts = 20, delayMs = 250) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Timeout")), 1000);
+        chrome.runtime.sendMessage({ type: "PING" }, (response) => {
+          clearTimeout(timeout);
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+
+      if (response && response.ready) {
+        console.log(
+          `[Background] Offscreen document ready after ${i + 1} attempts`
+        );
+        return true;
+      }
+    } catch (e) {
+      // Not ready yet, wait and retry
+      console.log(
+        `[Background] Waiting for offscreen document... attempt ${
+          i + 1
+        }/${maxAttempts}`
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  throw new Error("Offscreen document failed to become ready");
+}
+
+/**
+ * Create or reuse the offscreen document
+ */
 async function setupOffscreenDocument() {
   const hasDocument = await hasOffscreenDocument();
 
@@ -104,8 +144,16 @@ async function setupOffscreenDocument() {
     });
     console.log("[Background] Offscreen document created");
 
-    // Give it a moment to initialize
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait for the offscreen document to be ready
+    try {
+      await waitForOffscreenReady();
+    } catch (error) {
+      console.warn(
+        "[Background] Offscreen document ready check failed:",
+        error
+      );
+      // Continue anyway - the document might still work
+    }
 
     // Pre-initialize the model
     try {
@@ -286,7 +334,7 @@ async function organizeTabs(sendStatus = null) {
     // Step 2: Query all tabs in current window
     if (sendStatus)
       sendStatus({ status: "loading", message: "Loading tabs..." });
-    const tabs = await chrome.tabs.query({ currentWindow: true });
+    const tabs = await chrome.tabs.query({ lastFocusedWindow: true });
 
     console.log(`[Background] Found ${tabs.length} tabs to organize`);
     console.log("[Background] ========== TAB DETAILS ==========");

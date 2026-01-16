@@ -1,11 +1,11 @@
-import * as webllm from '@mlc-ai/web-llm';
+import * as webllm from "@mlc-ai/web-llm";
 
 let engine = null;
 let isInitializing = false;
 let initializationPromise = null;
 
 // Embedding model - supports batch processing for efficiency
-const EMBEDDING_MODEL = 'snowflake-arctic-embed-m-q0f32-MLC-b4';
+const EMBEDDING_MODEL = "snowflake-arctic-embed-m-q0f32-MLC-b4";
 
 // Initialize the WebLLM Engine for embeddings
 async function initializeEmbedder() {
@@ -20,19 +20,19 @@ async function initializeEmbedder() {
   isInitializing = true;
   initializationPromise = (async () => {
     try {
-      console.log('[Offscreen] Initializing WebLLM Engine...');
+      console.log("[Offscreen] Initializing WebLLM Engine...");
 
       engine = await webllm.CreateMLCEngine(EMBEDDING_MODEL, {
         initProgressCallback: (progress) => {
-          console.log('[Offscreen] Model loading:', progress.text);
+          console.log("[Offscreen] Model loading:", progress.text);
         },
-        logLevel: 'INFO'
+        logLevel: "INFO",
       });
 
-      console.log('[Offscreen] WebLLM Engine initialized successfully');
+      console.log("[Offscreen] WebLLM Engine initialized successfully");
       return engine;
     } catch (error) {
-      console.error('[Offscreen] Failed to initialize WebLLM Engine:', error);
+      console.error("[Offscreen] Failed to initialize WebLLM Engine:", error);
       isInitializing = false;
       initializationPromise = null;
       throw error;
@@ -55,7 +55,7 @@ async function generateEmbeddings(tabs) {
     const validTabs = [];
 
     for (const tab of tabs) {
-      const text = `${tab.title || ''} ${tab.url || ''}`.trim();
+      const text = `${tab.title || ""} ${tab.url || ""}`.trim();
       if (text) {
         tabTexts.push(text);
         validTabs.push(tab);
@@ -76,7 +76,7 @@ async function generateEmbeddings(tabs) {
 
       try {
         const result = await embedder.embeddings.create({
-          input: batchTexts
+          input: batchTexts,
         });
 
         // Map results back to tab IDs
@@ -84,37 +84,48 @@ async function generateEmbeddings(tabs) {
           const tab = batchTabs[j];
           const embedding = result.data[j].embedding;
           embeddings[tab.id] = embedding;
-          console.log(`[Offscreen] Generated embedding for tab ${tab.id}: ${batchTexts[j].substring(0, 50)}...`);
+          console.log(
+            `[Offscreen] Generated embedding for tab ${tab.id}: ${batchTexts[
+              j
+            ].substring(0, 50)}...`
+          );
         }
       } catch (error) {
-        console.error(`[Offscreen] Error generating embeddings for batch starting at ${i}:`, error);
+        console.error(
+          `[Offscreen] Error generating embeddings for batch starting at ${i}:`,
+          error
+        );
         // Continue with other batches even if one fails
       }
     }
 
-    console.log(`[Offscreen] Successfully generated ${Object.keys(embeddings).length} embeddings`);
+    console.log(
+      `[Offscreen] Successfully generated ${
+        Object.keys(embeddings).length
+      } embeddings`
+    );
     return embeddings;
   } catch (error) {
-    console.error('[Offscreen] Error in generateEmbeddings:', error);
+    console.error("[Offscreen] Error in generateEmbeddings:", error);
     throw error;
   }
 }
 
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[Offscreen] Received message:', message.type);
+  console.log("[Offscreen] Received message:", message.type);
 
-  if (message.type === 'GENERATE_EMBEDDINGS') {
+  if (message.type === "GENERATE_EMBEDDINGS") {
     // Handle async operation
     generateEmbeddings(message.tabs)
-      .then(embeddings => {
+      .then((embeddings) => {
         sendResponse({ success: true, embeddings });
       })
-      .catch(error => {
-        console.error('[Offscreen] Error processing request:', error);
+      .catch((error) => {
+        console.error("[Offscreen] Error processing request:", error);
         sendResponse({
           success: false,
-          error: error.message || 'Failed to generate embeddings'
+          error: error.message || "Failed to generate embeddings",
         });
       });
 
@@ -122,24 +133,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === 'INITIALIZE_MODEL') {
+  if (message.type === "INITIALIZE_MODEL") {
     // Pre-initialize the model
     initializeEmbedder()
       .then(() => {
         sendResponse({ success: true, initialized: true });
       })
-      .catch(error => {
-        console.error('[Offscreen] Error initializing model:', error);
+      .catch((error) => {
+        console.error("[Offscreen] Error initializing model:", error);
         sendResponse({
           success: false,
-          error: error.message || 'Failed to initialize model'
+          error: error.message || "Failed to initialize model",
         });
       });
 
     return true;
   }
 
+  // Respond to ping - used by background script to check if offscreen is ready
+  if (message.type === "PING") {
+    sendResponse({ success: true, ready: true });
+    return false;
+  }
+
   return false;
 });
 
-console.log('[Offscreen] Offscreen document loaded and ready');
+console.log("[Offscreen] Offscreen document loaded and ready");
+
+// Signal to background that we're ready (in case it's already listening)
+chrome.runtime.sendMessage({ type: "OFFSCREEN_READY" }).catch(() => {
+  // Background might not be listening yet, that's okay
+});
