@@ -1,5 +1,6 @@
 // Use simple keyword-based grouping (reliable, fast, works everywhere)
-import { groupTabs } from '../utils/simpleGrouper.js';
+import { groupTabs } from "../utils/simpleGrouper.js";
+import { categorizeTabs } from "../utils/smartCategorizer.js";
 
 const CHROME_COLORS = [
   "grey",
@@ -111,11 +112,21 @@ async function init() {
     }
     updateProgress(30, "Analyzing pages...");
     const tabData = await extractTabDataWithContent(tabs);
-    updateProgress(70, "Grouping tabs...");
-    // Use simple but effective multi-signal grouping
-    const result = groupTabs(tabData, 0.5);
-    groups = result.groups;
-    ungroupedTabs = result.ungrouped;
+    updateProgress(50, "Categorizing tabs...");
+
+    // Use smart categorizer with hybrid approach
+    // Falls back to domain lookup + keyword matching (no embeddings for speed)
+    const smartResult = await categorizeTabs(tabData, {
+      getEmbedding: null, // Disable embeddings for now (fast mode)
+      similarityThreshold: 0.7,
+      minClusterSize: 2,
+    });
+
+    updateProgress(70, "Finalizing groups...");
+
+    // Use smart categorizer results
+    groups = smartResult.groups;
+    ungroupedTabs = smartResult.others; // "Others" category becomes ungrouped
     nextGroupId = groups.length;
     updateProgress(100, "Done!");
     setTimeout(() => render("groups"), 150);

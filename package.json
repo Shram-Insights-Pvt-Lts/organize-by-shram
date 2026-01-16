@@ -1,6 +1,6 @@
 {
   "name": "tabsmart",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chrome Extension that automatically organizes tabs using local AI embeddings",
   "keywords": [
     "chrome-extension",
