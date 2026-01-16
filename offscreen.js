@@ -25,6 +25,26 @@ async function initializeEmbedder() {
       engine = await webllm.CreateMLCEngine(EMBEDDING_MODEL, {
         initProgressCallback: (progress) => {
           console.log("[Offscreen] Model loading:", progress.text);
+
+          // Parse progress percentage from text (e.g., "Loading model... 45%")
+          let percent = 0;
+          const match = progress.text.match(/(\d+(?:\.\d+)?)%/);
+          if (match) {
+            percent = parseFloat(match[1]);
+          } else if (progress.progress !== undefined) {
+            percent = Math.round(progress.progress * 100);
+          }
+
+          // Send progress to popup
+          chrome.runtime
+            .sendMessage({
+              type: "MODEL_DOWNLOAD_PROGRESS",
+              percent: percent,
+              text: progress.text,
+            })
+            .catch(() => {
+              // Popup might be closed, ignore error
+            });
         },
         logLevel: "INFO",
       });
