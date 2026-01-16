@@ -1,16 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Organize by Shram",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatically organize open browser tabs into logical groups using local, privacy-first AI",
-  "permissions": [
-    "tabs",
-    "tabGroups",
-    "offscreen"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "permissions": ["tabs", "tabGroups", "offscreen"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
@@ -34,14 +28,8 @@
   },
   "web_accessible_resources": [
     {
-      "resources": [
-        "offscreen.html",
-        "wasm/*",
-        "models/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
+      "resources": ["offscreen.html", "wasm/*", "models/*"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
