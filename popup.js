@@ -6,6 +6,7 @@ const statusArea = document.getElementById("statusArea");
 let isFirstRun = false;
 let initStartTime = null;
 let statusUpdateInterval = null;
+let statusHideTimeout = null;
 
 // Status message templates
 const statusMessages = {
@@ -26,6 +27,12 @@ function updateStatus(status, message, showSpinner = false) {
   const defaultMessage = statusMessages[status] || message;
   const displayMessage = message || defaultMessage;
 
+  // Clear any pending hide timeout
+  if (statusHideTimeout) {
+    clearTimeout(statusHideTimeout);
+    statusHideTimeout = null;
+  }
+
   let html = "";
 
   if (showSpinner) {
@@ -35,6 +42,13 @@ function updateStatus(status, message, showSpinner = false) {
   html += `<div class="status-text ${status}">${displayMessage}</div>`;
 
   statusArea.innerHTML = html;
+
+  // Auto-hide status area after 5 seconds for terminal states (complete/error)
+  if (status === "complete" || status === "error") {
+    statusHideTimeout = setTimeout(() => {
+      statusArea.innerHTML = "";
+    }, 3000);
+  }
 }
 
 /**
