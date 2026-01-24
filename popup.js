@@ -1,6 +1,9 @@
 const organizeBtn = document.getElementById("organizeBtn");
 const clearGroupsBtn = document.getElementById("clearGroupsBtn");
 const statusArea = document.getElementById("statusArea");
+const downloadProgress = document.getElementById("downloadProgress");
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
 
 // Track if this is a first run (model not yet cached)
 let isFirstRun = false;
@@ -71,7 +74,7 @@ async function handleOrganize() {
     if (response && response.success) {
       updateStatus(
         "complete",
-        `Successfully organized into ${response.groupsCreated} groups!`,
+        `Organized tabs into ${response.groupsCreated} groups.`,
         false
       );
 
@@ -80,7 +83,7 @@ async function handleOrganize() {
         setTimeout(() => {
           updateStatus(
             "complete",
-            `Created ${response.groupsCreated} groups. ${response.noiseCount} unique tabs left ungrouped.`,
+            `Created ${response.groupsCreated} groups. ${response.noiseCount} tabs not grouped.`,
             false
           );
         }, 1500);
@@ -106,10 +109,6 @@ async function handleOrganize() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle model download progress
   if (message.type === "MODEL_DOWNLOAD_PROGRESS") {
-    const downloadProgress = document.getElementById("downloadProgress");
-    const progressFill = document.getElementById("progressFill");
-    const progressText = document.getElementById("progressText");
-
     if (downloadProgress && progressFill && progressText) {
       // Show the progress bar
       downloadProgress.classList.add("visible");
@@ -124,7 +123,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           percent
         )}%`;
       } else {
-        progressText.textContent = "Model loaded! Analyzing tabs...";
+        progressText.textContent = "Model loaded.";
       }
     }
     return;
@@ -185,7 +184,7 @@ async function handleClearGroups() {
     clearGroupsBtn.textContent = "Ungrouping...";
 
     // Show status
-    updateStatus("clearing", "Removing all tab groups...", true);
+    updateStatus("clearing", "Removing all groups...", true);
 
     // Send message to background script
     const response = await chrome.runtime.sendMessage({
@@ -195,7 +194,7 @@ async function handleClearGroups() {
     if (response && response.success) {
       updateStatus(
         "complete",
-        `Cleared ${response.groupsCleared} group(s)!`,
+        `Cleared ${response.groupsCleared} ${response.groupsCleared === 1 ? "group" : "groups"}`,
         false
       );
     } else {
