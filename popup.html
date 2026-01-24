@@ -23,7 +23,6 @@
       gap: 18px;
       width: 320px;
       max-width: 320px;
-      padding: 21px 18px 24px 18px;
       background: #ffffff;
     }
 
@@ -37,13 +36,13 @@
     .compWrap {
       display: flex;
       flex-direction: column;
-      gap: 18px;
     }
 
     .row1 {
       display: flex;
       flex-direction: column;
       gap: 9px;
+      padding: 21px 18px 0;
     }
 
     .row1 h1 {
@@ -78,6 +77,7 @@
       flex-direction: column;
       gap: 12px;
       width: 100%;
+      padding: 18px 18px 0;
     }
 
     .col1 {
@@ -181,6 +181,7 @@
       flex-direction: column;
       gap: 12px;
       width: 100%;
+      padding: 18px 18px 12px;
     }
 
     .row3 .horLine {
@@ -241,33 +242,32 @@
 
     #statusArea {
       display: none;
-      flex-direction: column;
-      align-items: center;
       gap: 8px;
       width: 100%;
-      padding: 12px;
+      min-height: 26px;
+      padding: 6px;
       background: rgba(0, 0, 0, 0.04);
       border-radius: 6px;
-      color: rgba(0, 0, 0, 0.6);
     }
 
     #statusArea:not(:empty) {
-      display: flex;
+      display: none;
+      /* display: flex; */
     }
 
     .status-text {
+      max-width: 100%;
       font-size: 12px;
-      line-height: 1.5;
-      text-align: center;
-      white-space: pre-line;
+      line-height: 12px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.5);
     }
 
     .spinner {
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border: 2px solid rgba(253, 188, 64, 0.3);
       border-top-color: rgba(253, 188, 64, 1);
-      border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
 
@@ -286,26 +286,24 @@
 
     /* Download Progress Bar */
     #downloadProgress {
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 8px;
       width: 100%;
     }
 
-    #downloadProgress.visible {
-      display: flex;
-    }
-
     .progress-bar-container {
       width: 100%;
       height: 6px;
-      background: rgba(0, 0, 0, 0.1);
-      border-radius: 3px;
       overflow: hidden;
     }
 
+    .progress-bar-container.visible {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
     @media (prefers-color-scheme: dark) {
-      .progress-bar-container {
+      .progress-bar-container.visible {
         background: rgba(255, 255, 255, 0.1);
       }
     }
@@ -313,14 +311,15 @@
     .progress-bar-fill {
       height: 100%;
       background: linear-gradient(to right, rgba(253, 188, 64, 0.8), rgba(253, 188, 64, 1));
-      border-radius: 3px;
       transition: width 0.3s ease-out;
     }
 
     .download-progress-text {
-      font-size: 11px;
-      line-height: 1.4;
+      display: none;
       text-align: center;
+      font-size: 12px;
+      line-height: 12px;
+      font-weight: 400;
       color: rgba(0, 0, 0, 0.5);
     }
 
@@ -353,16 +352,6 @@
       <p>Press “Organize” to automatically group your tabs</p>
     </div>
 
-    <!-- Download Progress (shown during first-time model download) -->
-    <div id="downloadProgress">
-      <div class="progress-bar-container">
-        <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
-      </div>
-      <div class="download-progress-text" id="progressText">Downloading AI model...</div>
-      <div class="download-progress-text" style="opacity: 0.7; font-size: 10px;">First time only • Future runs will be
-        instant</div>
-    </div>
-
     <!-- Info -->
     <div class="row3">
       <div class="col2">
@@ -373,15 +362,27 @@
         <p>All processing happens in your browser<br>Your data never leaves your device</p>
       </div>
 
-      <!-- Status Area (do not delete) -->
-      <div id="statusArea"></div>
-
+      <!-- Divider -->
       <div class="horLine"></div>
 
+      <!-- Footer -->
       <div class="footer">
         <p>Made with <span class="material-symbols-outlined icon2">favorite</span>
           by <a href="https://www.shram.ai" target="_blank">Team Shram</a></p>
       </div>
+    </div>
+
+    <!-- Status area (do not delete) -->
+    <div id="statusArea"></div>
+
+    <!-- Progress bar (do not delete) -->
+    <div id="downloadProgress">
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <div class="download-progress-text" id="progressText">Downloading AI model...</div>
+      <div class="download-progress-text" style="opacity: 0.7; font-size: 10px;">First time only • Future runs will be
+        instant</div>
     </div>
   </div>
 
