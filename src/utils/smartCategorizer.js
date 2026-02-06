@@ -897,12 +897,21 @@ function categoryFromDomain(tab) {
       return DOMAIN_CATEGORY_MAP[hostname];
     }
 
-    // Check for partial matches (e.g., 'google.com/maps')
+    // Check for partial matches, preferring the most specific (longest) domain match
+    // This ensures e.g. 'console.aws.amazon.com' matches Development, not 'amazon.com' Shopping
     const fullPath = hostname + url.pathname;
+    let bestMatch = null;
+    let bestMatchLen = 0;
     for (const [domain, category] of Object.entries(DOMAIN_CATEGORY_MAP)) {
       if (fullPath.startsWith(domain) || hostname.endsWith(domain)) {
-        return category;
+        if (domain.length > bestMatchLen) {
+          bestMatch = category;
+          bestMatchLen = domain.length;
+        }
       }
+    }
+    if (bestMatch) {
+      return bestMatch;
     }
 
     // Check for subdomain matches (e.g., 'app.slack.com' should match 'slack.com')

@@ -364,28 +364,8 @@ async function organizeTabs(sendStatus = null) {
       return { success: false, error: "Not enough tabs to organize" };
     }
 
-    // Step 3: Get embeddings
-    if (sendStatus)
-      sendStatus({
-        status: "processing",
-        message: `Analyzing ${tabs.length} tabs...`,
-      });
-    const embeddings = await getEmbeddings(tabs);
-
-    const embeddingCount = Object.keys(embeddings).length;
-    console.log(`[Background] Received ${embeddingCount} embeddings`);
-
-    if (embeddingCount < 2) {
-      if (sendStatus)
-        sendStatus({
-          status: "error",
-          message: "Not enough valid tabs to organize",
-        });
-      return { success: false, error: "Not enough valid tabs" };
-    }
-
     // ==================== CATEGORY-BASED GROUPING ====================
-    // Step 4: Group by CATEGORY (using domain → category mapping)
+    // Step 3: Group by CATEGORY first (fast, no ML needed)
     if (sendStatus)
       sendStatus({ status: "clustering", message: "Categorizing tabs..." });
 
@@ -404,12 +384,19 @@ async function organizeTabs(sendStatus = null) {
         }
 
         // Check for partial matches (e.g., 'google.com/maps')
+        // Use best (longest) match to avoid e.g. AWS being categorized as Shopping
         const fullPath = hostname + urlObj.pathname;
+        let bestMatch = null;
+        let bestMatchLen = 0;
         for (const [domain, category] of Object.entries(DOMAIN_CATEGORY_MAP)) {
           if (fullPath.startsWith(domain) || hostname.endsWith(domain)) {
-            return category;
+            if (domain.length > bestMatchLen) {
+              bestMatch = category;
+              bestMatchLen = domain.length;
+            }
           }
         }
+        if (bestMatch) return bestMatch;
 
         // Check for subdomain matches (e.g., 'app.slack.com' should match 'slack.com')
         const parts = hostname.split(".");
@@ -426,8 +413,6 @@ async function organizeTabs(sendStatus = null) {
     }
 
     for (const tab of tabs) {
-      if (!embeddings[tab.id]) continue; // Skip tabs without embeddings
-
       const category = getCategoryFromUrl(tab.url);
 
       if (category) {
@@ -472,20 +457,41 @@ async function organizeTabs(sendStatus = null) {
       `[Background] Category grouping: ${categoryClusters.length} categories, ${categoryGroupedTabIds.size} tabs grouped`
     );
 
+    // Step 4: Get embeddings ONLY for uncategorized tabs
+    const uncategorizedTabs = tabs.filter(
+      (tab) => !categoryGroupedTabIds.has(tab.id.toString())
+    );
+
+    console.log(
+      `[Background] ${uncategorizedTabs.length} tabs need embeddings (${categoryGroupedTabIds.size} already categorized by domain)`
+    );
+
+    let remainingEmbeddings = {};
+
+    if (uncategorizedTabs.length >= 2) {
+      if (sendStatus)
+        sendStatus({
+          status: "processing",
+          message: `Analyzing ${uncategorizedTabs.length} uncategorized tabs...`,
+        });
+      const embeddings = await getEmbeddings(uncategorizedTabs);
+
+      const embeddingCount = Object.keys(embeddings).length;
+      console.log(`[Background] Received ${embeddingCount} embeddings`);
+
+      remainingEmbeddings = embeddings;
+    } else {
+      console.log(
+        "[Background] Skipping embeddings — all tabs categorized by domain or too few remaining"
+      );
+    }
+
     // Step 5: Semantic clustering for REMAINING ungrouped tabs only
     if (sendStatus)
       sendStatus({
         status: "clustering",
         message: "Finding semantic patterns...",
       });
-
-    // Filter embeddings to only ungrouped tabs
-    const remainingEmbeddings = {};
-    for (const [tabId, embedding] of Object.entries(embeddings)) {
-      if (!categoryGroupedTabIds.has(tabId)) {
-        remainingEmbeddings[tabId] = embedding;
-      }
-    }
 
     const remainingCount = Object.keys(remainingEmbeddings).length;
     console.log(
@@ -604,10 +610,10 @@ async function organizeTabs(sendStatus = null) {
     );
     semanticClusters.forEach((c) => c.forEach((id) => groupedTabIds.add(id)));
 
-    // Find tabs that weren't grouped
-    const ungroupedTabIds = Object.keys(embeddings).filter(
-      (id) => !groupedTabIds.has(id)
-    );
+    // Find tabs that weren't grouped (uncategorized tabs that weren't semantically clustered)
+    const ungroupedTabIds = uncategorizedTabs
+      .map((tab) => tab.id.toString())
+      .filter((id) => !groupedTabIds.has(id));
     const remainingUngrouped = ungroupedTabIds.length;
 
     // Create "Ungrouped" group for remaining tabs (at rightmost position since created last)
